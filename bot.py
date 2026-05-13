@@ -4,15 +4,15 @@ from flask import Flask
 from threading import Thread
 from datetime import timedelta
 import os
-import time
 import random
 
 # ================= WEB SERVER =================
+
 app = Flask("")
 
 @app.route("/")
 def home():
-    return "Bot is running"
+    return "Bot is running ✅"
 
 def run():
     app.run(host="0.0.0.0", port=10000)
@@ -20,7 +20,7 @@ def run():
 def keep_alive():
     Thread(target=run).start()
 
-# ================= BOT =================
+# ================= BOT SETUP =================
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -36,74 +36,64 @@ warnings = {}
 @bot.event
 async def on_ready():
     synced = await bot.tree.sync()
-    print(f"Synced {len(synced)} commands")
-    print(f"Logged in as {bot.user}")
+    print(f"✅ Synced {len(synced)} commands")
+    print(f"🤖 Logged in as {bot.user}")
 
-# ================= BASIC =================
+# ================= HELP FUNCTION =================
+
+def ok(msg):
+    return discord.Embed(description=msg, color=0x00ff00)
+
+# ================= MODERATION =================
 
 @bot.tree.command(name="طرد")
 async def kick(interaction: discord.Interaction, user: discord.Member):
     await user.kick()
-    await interaction.response.send_message("👢 تم الطرد")
+    await interaction.response.send_message(embed=ok(f"👢 تم طرد {user.mention}"))
 
 @bot.tree.command(name="حظر")
 async def ban(interaction: discord.Interaction, user: discord.Member):
     await user.ban()
-    await interaction.response.send_message("⛔ تم الحظر")
+    await interaction.response.send_message(embed=ok(f"⛔ تم حظر {user.mention}"))
 
 @bot.tree.command(name="اسكات")
 async def mute(interaction: discord.Interaction, user: discord.Member, minutes: int):
     await user.timeout(timedelta(minutes=minutes))
-    await interaction.response.send_message("🔇 تم الاسكات")
+    await interaction.response.send_message(embed=ok(f"🔇 تم اسكات {user.mention}"))
 
 @bot.tree.command(name="فك_اسكات")
 async def unmute(interaction: discord.Interaction, user: discord.Member):
     await user.timeout(None)
-    await interaction.response.send_message("🔊 تم فك الاسكات")
+    await interaction.response.send_message(embed=ok(f"🔊 تم فك الاسكات"))
 
 @bot.tree.command(name="مسح")
 async def clear(interaction: discord.Interaction, amount: int):
     await interaction.channel.purge(limit=amount)
-    await interaction.response.send_message("🧹 تم المسح", ephemeral=True)
+    await interaction.response.send_message(embed=ok("🧹 تم مسح الشات"), ephemeral=True)
 
 # ================= ROLES =================
 
 @bot.tree.command(name="اعطاء_رتبة")
 async def addrole(interaction: discord.Interaction, user: discord.Member, role: discord.Role):
     await user.add_roles(role)
-    await interaction.response.send_message("✅ تم إعطاء رتبة")
+    await interaction.response.send_message(embed=ok("✅ تم إعطاء رتبة"))
 
 @bot.tree.command(name="مسح_رتب")
 async def removeroles(interaction: discord.Interaction, user: discord.Member):
     await user.edit(roles=[])
-    await interaction.response.send_message("🧹 تم مسح الرتب")
-
-@bot.tree.command(name="تغيير_ايقونة_رتبة")
-async def roleicon(interaction: discord.Interaction, role: discord.Role, url: str):
-    await role.edit(display_icon=url)
-    await interaction.response.send_message("🎭 تم تغيير أيقونة الرتبة")
+    await interaction.response.send_message(embed=ok("🧹 تم مسح الرتب"))
 
 # ================= CHAT CONTROL =================
 
 @bot.tree.command(name="اقفال_شات")
 async def lock(interaction: discord.Interaction):
     await interaction.channel.set_permissions(interaction.guild.default_role, send_messages=False)
-    await interaction.response.send_message("🔒 تم القفل")
+    await interaction.response.send_message(embed=ok("🔒 تم قفل الشات"))
 
 @bot.tree.command(name="فتح_شات")
 async def unlock(interaction: discord.Interaction):
     await interaction.channel.set_permissions(interaction.guild.default_role, send_messages=True)
-    await interaction.response.send_message("🔓 تم الفتح")
-
-@bot.tree.command(name="اخفاء")
-async def hide(interaction: discord.Interaction, channel: discord.TextChannel):
-    await channel.set_permissions(interaction.guild.default_role, view_channel=False)
-    await interaction.response.send_message("🙈 تم الإخفاء")
-
-@bot.tree.command(name="اظهار")
-async def show(interaction: discord.Interaction, channel: discord.TextChannel):
-    await channel.set_permissions(interaction.guild.default_role, view_channel=True)
-    await interaction.response.send_message("👀 تم الإظهار")
+    await interaction.response.send_message(embed=ok("🔓 تم فتح الشات"))
 
 # ================= TICKET =================
 
@@ -117,9 +107,13 @@ async def ticket(interaction: discord.Interaction):
         interaction.user: discord.PermissionOverwrite(view_channel=True)
     }
 
-    ch = await guild.create_text_channel(f"ticket-{interaction.user.name}", overwrites=overwrites)
-    await ch.send("🎟️ تيكت مفتوح")
-    await interaction.response.send_message("تم فتح تيكت", ephemeral=True)
+    channel = await guild.create_text_channel(
+        name=f"ticket-{interaction.user.name}",
+        overwrites=overwrites
+    )
+
+    await channel.send(f"🎟️ تيكت من {interaction.user.mention}")
+    await interaction.response.send_message(embed=ok("تم فتح تيكت"), ephemeral=True)
 
 @bot.tree.command(name="اغلاق_تيكت")
 async def close(interaction: discord.Interaction):
@@ -128,7 +122,7 @@ async def close(interaction: discord.Interaction):
 # ================= PROFILE =================
 
 @bot.tree.command(name="بروفايل")
-async def profile(interaction: discord.Interaction, user: discord.Member=None):
+async def avatar(interaction: discord.Interaction, user: discord.Member=None):
     user = user or interaction.user
     await interaction.response.send_message(user.avatar.url)
 
@@ -160,9 +154,9 @@ async def transfer(interaction: discord.Interaction, user: discord.Member, amoun
 @bot.tree.command(name="afk")
 async def setafk(interaction: discord.Interaction, reason: str="AFK"):
     afk[interaction.user.id] = reason
-    await interaction.response.send_message("😴 تم AFK")
+    await interaction.response.send_message("😴 تم تفعيل AFK")
 
-# ================= WARN =================
+# ================= WARN SYSTEM =================
 
 @bot.tree.command(name="تحذير")
 async def warn(interaction: discord.Interaction, user: discord.Member, reason: str):
@@ -172,7 +166,7 @@ async def warn(interaction: discord.Interaction, user: discord.Member, reason: s
 @bot.tree.command(name="تحذيرات")
 async def showwarns(interaction: discord.Interaction, user: discord.Member):
     w = warnings.get(user.id, [])
-    await interaction.response.send_message(f"📋 {len(w)} تحذيرات")
+    await interaction.response.send_message(f"📋 عدد التحذيرات: {len(w)}")
 
 # ================= USER INFO =================
 
@@ -183,13 +177,13 @@ async def userinfo(interaction: discord.Interaction, user: discord.Member=None):
 
     age = (discord.utils.utcnow() - user.created_at).days
 
-    await interaction.response.send_message(
-        f"""
-👤 {user.name}
-📅 انشأ الحساب منذ: {age} يوم
-🆔 {user.id}
-"""
-    )
+    embed = discord.Embed(title="👤 معلومات العضو", color=0x00ffcc)
+    embed.add_field(name="الاسم", value=user.name)
+    embed.add_field(name="ID", value=user.id)
+    embed.add_field(name="عمر الحساب", value=f"{age} يوم")
+    embed.set_thumbnail(url=user.avatar.url)
+
+    await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="فحص_عضو")
 async def check(interaction: discord.Interaction, user: discord.Member):
@@ -200,31 +194,31 @@ async def check(interaction: discord.Interaction, user: discord.Member):
 
     await interaction.response.send_message(f"{user.mention} → {status}")
 
-# ================= HELP =================
+# ================= COMMANDS LIST =================
 
 @bot.tree.command(name="الأوامر")
 async def help(interaction: discord.Interaction):
 
     await interaction.response.send_message("""
-🤖 كل الأوامر:
+🤖 الأوامر:
 
 🛡️ إدارة:
 /طرد /حظر /اسكات /فك_اسكات /مسح
 
 🎭 رتب:
-/اعطاء_رتبة /مسح_رتب /تغيير_ايقونة_رتبة
+/اعطاء_رتبة /مسح_رتب
 
 🔒 شات:
-/اقفال_شات /فتح_شات /اخفاء /اظهار
+/اقفال_شات /فتح_شات
 
 🎟️ تيكت:
 /تيكت /اغلاق_تيكت
 
-💰 اقتصاد:
-/كريديت /تحويل
-
 👤:
-/معلومات_عضو /فحص_عضو /بروفايل
+/معلومات_عضو /فحص_عضو /بروفايل /صورة_عشوائية
+
+💰:
+/كريديت /تحويل
 
 😴:
 /afk
